@@ -87,6 +87,7 @@ void autonomous() {
 
 void opcontrol() {
 	while (true) {
+		run_driver();
 		pros::delay(20); // sleep	
 	}
 }
