@@ -37,3 +37,8 @@ extern State scoring_state;
 
 extern pros::adi::DigitalOut hook;
 extern pros::adi::DigitalOut match_loader;
+
+extern pros::Distance left;
+extern pros::Distance right;
+extern pros::Distance front;
+extern pros::Distance back;

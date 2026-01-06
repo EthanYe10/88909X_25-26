@@ -56,12 +56,17 @@ lemlib::Chassis chassis(
 );
 
 pros::Motor pre_roller(Ports::pre_roller);
-pros::Motor elevator(Ports::elevator);
-pros::Motor shooter(Ports::shooter);
+pros::Motor elevator  (Ports::elevator);
+pros::Motor shooter   (Ports::shooter);
 
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
 
 State scoring_state(HOARD);
 
-pros::adi::DigitalOut hook(Ports::hook);
+pros::adi::DigitalOut hook        (Ports::hook);
 pros::adi::DigitalOut match_loader(Ports::match_loader);
+
+pros::Distance front(Ports::front_distance);
+pros::Distance left (Ports::left_distance);
+pros::Distance right(Ports::right_distance);
+pros::Distance back (Ports::back_distance);
