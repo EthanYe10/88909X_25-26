@@ -20,8 +20,6 @@ lemlib::Drivetrain drive(nullptr, nullptr, 0, 0, 0, 0); // the drivetrain to be 
 lemlib::Pose odomPose(0, 0, 0); // the pose of the robot
 lemlib::Pose odomSpeed(0, 0, 0); // the speed of the robot
 lemlib::Pose odomLocalSpeed(0, 0, 0); // the local speed of the robot
-PoseCorrector poseCorrector;
-
 
 float prevVertical = 0;
 float prevVertical1 = 0;
@@ -174,6 +172,7 @@ void lemlib::update() {
     odomPose.y += localX * sin(avgHeading);
     odomPose.theta = heading;
 
+    // comment out this line to avoid disaster (maybe if kalman blows up or my math blows up)
     poseCorrector.update();
 
     // calculate speed

@@ -213,3 +213,5 @@ void PoseCorrector::update() {
     // HOLY CONDITION STACKING
     // gg ez chat is the goat
 }
+
+PoseCorrector poseCorrector;

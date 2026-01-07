@@ -80,3 +80,5 @@ public:
     , prediction(lemlib::Pose{0, 0, 0})
     , previous_prediction(lemlib::Pose{0, 0, 0}) {}
 };
+
+extern PoseCorrector poseCorrector;
