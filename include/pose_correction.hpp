@@ -73,4 +73,10 @@ public:
     bool corrected_pose_is_valid() const; // uses mahalanobis distance to check validity (i lwk don't even know what this means)
     lemlib::Pose fuse_pose(); // fuses the new corrected pose with current pose using linear kalman filter
     void update(); // does stuff (yeah very cool i know)
+
+    PoseCorrector() 
+    : Px(0.0), Py(0.0)
+    , motion_tracking_initialized(false)
+    , prediction(lemlib::Pose{0, 0, 0})
+    , previous_prediction(lemlib::Pose{0, 0, 0}) {}
 };

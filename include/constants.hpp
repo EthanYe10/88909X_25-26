@@ -98,4 +98,7 @@ namespace PoseCorrection {
     // TUNE THESE
     constexpr double min_turn_speed_threshold = 2.0;
     constexpr double min_accel_threshold = 5.0; 
+
+    // THIS TOO
+    constexpr double max_pose_correction_per_update = 1.0; // in inches
 }

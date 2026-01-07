@@ -1,4 +1,5 @@
 #include "robot-config.hpp"
+#include "lemlib/chassis/trackingWheel.hpp"
 #include "pros/motors.hpp"
 #include "constants.hpp"
 
@@ -17,9 +18,23 @@ lemlib::Drivetrain drivetrain(
 
 pros::IMU inertial(Ports::inertial);
 
+lemlib::TrackingWheel left_motor_encoders(
+    &leftMotors, 
+    Drivetrain::wheel_diameter, 
+    -Drivetrain::track_width / 2,
+    Drivetrain::rpm
+);
+
+lemlib::TrackingWheel right_motor_encoders(
+    &rightMotors, 
+    Drivetrain::wheel_diameter, 
+    Drivetrain::track_width / 2,
+    Drivetrain::rpm
+);
+
 lemlib::OdomSensors odom(
-    nullptr, 
-	nullptr, 
+    &left_motor_encoders, 
+	&right_motor_encoders, 
 	nullptr,
 	nullptr, 
 	&inertial);

@@ -1,4 +1,5 @@
 #include "pose_correction.hpp"
+#include "lemlib/chassis/odom.hpp"
 #include "lemlib/pose.hpp"
 #include "robot-config.hpp"
 #include "constants.hpp"
@@ -189,7 +190,7 @@ lemlib::Pose PoseCorrector::fuse_pose() {
 
 void PoseCorrector::update() {
     // first get odom measurement 
-    prediction = chassis.getPose();
+    prediction = lemlib::getPose();
     // calculate odom uncertainty
     calculate_odom_uncertainty();
 
@@ -203,8 +204,8 @@ void PoseCorrector::update() {
             // calculate change in pose 
             double dx = fused.x - prediction.x;
             double dy = fused.y - prediction.y;
-            if (fabs(dx) < 1 || fabs(dy) < 1) { // max 1 inch correction to prevent large jumps 
-                chassis.setPose(fused);
+            if (fabs(dx) < PoseCorrection::max_pose_correction_per_update || fabs(dy) < PoseCorrection::max_pose_correction_per_update) { // max 1 inch correction to prevent large jumps 
+                lemlib::setPose(fused);
             }
         }
     }
