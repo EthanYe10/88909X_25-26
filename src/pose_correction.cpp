@@ -5,16 +5,13 @@
 #include <cmath>
 
 bool PoseCorrector::correct_pose() {
-    current_pose = chassis.getPose();
-    corrected_pose.theta = current_pose.theta; // always trust imu for heading
-
-    bool right = current_pose.x >= Field::field_x / 2.0;
+    bool right = prediction.x >= Field::field_x / 2.0;
 
     const double wallX = right ? Field::field_x : 0.0;
     const double wallY = 0.0;
 
-    const double c = cos(current_pose.theta * degree_to_radian);
-    const double s = sin(current_pose.theta * degree_to_radian);
+    const double c = cos(prediction.theta * degree_to_radian);
+    const double s = sin(prediction.theta * degree_to_radian);
     
     EyeInfo eyes[] = {
         {Sensors::left_distance_x_offset, Sensors::left_distance_y_offset, Sensors::left_distance_theta, read_left_distance()},
@@ -33,14 +30,15 @@ bool PoseCorrector::correct_pose() {
 
     for (auto& eye : eyes) {
         // eye global position
-        double eX = current_pose.x + (eye.x_offset * c - eye.y_offset * s);
-        double eY = current_pose.y + (eye.x_offset * s + eye.y_offset * c);
+        double eX = prediction.x + (eye.x_offset * c - eye.y_offset * s);
+        double eY = prediction.y + (eye.x_offset * s + eye.y_offset * c);
 
         // eye direction vectors
-        double dX = cos((current_pose.theta+eye.theta) * degree_to_radian); // "directness" of the eye to x wall
-        double dY = sin((current_pose.theta+eye.theta) * degree_to_radian); // "directness" of the eye to y wall
+        double dX = cos((prediction.theta+eye.theta) * degree_to_radian); // "directness" of the eye to x wall
+        double dY = sin((prediction.theta+eye.theta) * degree_to_radian); // "directness" of the eye to y wall
 
-        // tX and tY are the distances along the direction vectors to the walls
+        // tX and tY are the distances along the direction vectors to the walls, essentially what the distance sensor should read
+        // they start at an invalid value, and are only set if the eye is facing the wall
         double tX = -1.0;
         double tY = -1.0;
         // x wall correction
@@ -54,11 +52,18 @@ bool PoseCorrector::correct_pose() {
             tY = (wallY - eY) / dY;
         }
         // determine which wall was hit (closest one if both positive, else only one positive)
+        // this works because if one sensor "sees" only 1 wall, then that is the only possible wall it could have hit
+        // if it "sees" both walls, then it must have hit the closer one
+        // if the difference between expected and actual reading is too large, skip this sensor
         char hit = 0;
         if (tX >= 0.0 && tY >= 0.0) { hit = (tX < tY) ? 'X' : 'Y'; } 
-        else if (tX >= 0.0) { hit = 'X'; } 
-        else if (tY >= 0.0) { hit = 'Y'; }
-        else continue; // didn't hit wall
+        else if (tX >= 0.0) hit = 'X';
+        else if (tY >= 0.0) hit = 'Y'; 
+        else continue; // didn't hit wall, skip this sensor
+        
+        // check difference between expected and actual reading
+        double expected_reading = (hit == 'X') ? tX : tY;
+        if (fabs(expected_reading - eye.reading) > (PoseCorrection::distance_max_diff_from_expected + 0.05 * expected_reading)) continue; 
 
         // calculate candidate corrected positions
         if (hit == 'X' && eye.reading >= 0.0) {
@@ -66,20 +71,144 @@ bool PoseCorrector::correct_pose() {
             if (x_confidence > best_x_confidence) {
                 best_x_confidence = x_confidence;
                 best_x_correction = x_candidate;
+                // calculate sensor uncertainty for x
+                double sigma_x = PoseCorrection::distance_r_base + PoseCorrection::distance_r_factor * eye.reading; // 15mm base error + 5% of reading, from VEX official specs
+                measurement.Rx = sigma_x * sigma_x; // variance
             }
         } else if (hit == 'Y' && eye.reading >= 0.0) {
             double y_candidate = wallY - eye.reading * dY - (eye.x_offset * s + eye.y_offset * c);
             if (y_confidence > best_y_confidence) {
                 best_y_confidence = y_confidence;
                 best_y_correction = y_candidate;
+                double sigma_y = PoseCorrection::distance_r_base + PoseCorrection::distance_r_factor * eye.reading;
+                measurement.Ry = sigma_y * sigma_y;
             }
         }
     }
+
     // apply best corrections if confident enough
-    if (best_x_confidence > pose_correction_min_confidence && best_y_confidence > pose_correction_min_confidence) {
-        corrected_pose.x = best_x_correction;
-        corrected_pose.y = best_y_correction;
+    if (best_x_confidence > PoseCorrection::pose_correction_min_confidence && best_y_confidence > PoseCorrection::pose_correction_min_confidence) {
+        measurement.x = best_x_correction;
+        measurement.y = best_y_correction;
         return true;
     }
     return false;
+}
+
+void PoseCorrector::calculate_odom_uncertainty() {
+
+    /* step 1: calculate the robot's motion */
+    constexpr double smoothing_factor = 0.2;
+    // calculate whether robot is turning or accelerating, for odom noise estimation
+    if (!motion_tracking_initialized) {
+        previous_prediction = prediction;
+        motion_tracking_initialized = true;
+    }
+
+    double dx = prediction.x - previous_prediction.x;
+    double dy = prediction.y - previous_prediction.y;
+    double dtheta = angle_diff(prediction.theta, previous_prediction.theta);
+
+    double yaw_rate = fabs(dtheta) / dt; // degrees per second
+    double speed = sqrt(dx*dx + dy*dy) / dt; // inches per second
+
+    yaw_rate_filtered = (1.0 - smoothing_factor) * yaw_rate_filtered + smoothing_factor * yaw_rate;
+    speed_filtered = (1.0 - smoothing_factor) * speed_filtered + smoothing_factor * speed;
+
+    double acceleration = (speed_filtered - previous_speed) / dt;
+    acceleration_filtered = (1.0 - smoothing_factor) * acceleration_filtered + smoothing_factor * acceleration;
+
+    previous_speed = speed_filtered;
+    previous_prediction = prediction;
+
+    if (!chassis.isInMotion()) {
+        yaw_rate_filtered = 0.0;
+        speed_filtered = 0.0;
+        acceleration_filtered = 0.0;
+        turning = false;
+        accelerating = false;
+    }
+    /* step 2: determine whether robot is turning or accelerating */
+    turning = yaw_rate_filtered > PoseCorrection::min_turn_speed_threshold; // deg/s threshold
+    accelerating = acceleration_filtered > PoseCorrection::min_accel_threshold; // in/s^2 threshold
+
+    /* step 3: calculate Px, Py based on motion */
+    double Q = PoseCorrection::Qbase;
+    if (turning) {
+        Q *= PoseCorrection::QturnMultiplier; 
+    }
+    if (accelerating) {
+        Q *= PoseCorrection::QaccelMultiplier;
+    }
+
+    if (chassis.isInMotion()) {
+        Px += Q;
+        Py += Q;
+    } else {
+        Px += 0.1 * PoseCorrection::Qbase; // small increase when stopped
+        Py += 0.1 * PoseCorrection::Qbase;
+    }
+}
+
+bool PoseCorrector::corrected_pose_is_valid() const {
+    // calculate mahalanobis distance
+    double dx = measurement.x - prediction.x;
+    double dy = measurement.y - prediction.y;
+
+    double d2 = 
+        (dx * dx) / (Px + measurement.Rx) + 
+        (dy * dy) / (Py + measurement.Ry);
+    return d2 < PoseCorrection::mahalanobis_distance_threshold_squared; 
+}
+
+lemlib::Pose PoseCorrector::fuse_pose() {
+    lemlib::Pose fused_pose = prediction;
+    fused_pose.theta = prediction.theta;
+
+    double dx = measurement.x - prediction.x;
+    double dy = measurement.y - prediction.y;
+
+    // innovation variance
+    double Sx = Px + measurement.Rx;;
+    double Sy = Py + measurement.Ry;
+
+    // Kalman gain
+    double Kx = Px / Sx;
+    double Ky = Py / Sy;
+
+    // update pose
+    fused_pose.x += Kx * dx;
+    fused_pose.y += Ky * dy;
+
+    // update uncertainties
+    Px = (1.0 - Kx) * Px;;
+    Py = (1.0 - Ky) * Py;
+
+    return fused_pose;
+}
+
+void PoseCorrector::update() {
+    // first get odom measurement 
+    prediction = chassis.getPose();
+    // calculate odom uncertainty
+    calculate_odom_uncertainty();
+
+    // get corrected pose from distance sensors
+    if (correct_pose()) {
+        // check if corrected pose is valid
+        if (corrected_pose_is_valid()) {
+            // fuse poses
+            lemlib::Pose fused = fuse_pose();
+
+            // calculate change in pose 
+            double dx = fused.x - prediction.x;
+            double dy = fused.y - prediction.y;
+            if (fabs(dx) < 1 || fabs(dy) < 1) { // max 1 inch correction to prevent large jumps 
+                chassis.setPose(fused);
+            }
+        }
+    }
+
+    // HOLY CONDITION STACKING
+    // gg ez chat is the goat
 }
