@@ -1,32 +1,5 @@
 #include "lemlib/pose.hpp"
-#include "pros/distance.hpp"
-#include "robot-config.hpp"
-#include "constants.hpp"
-
-/*returns the reading of a distance sensor in inches, or -1 if invalid (outside sensor range/too low to be accurate)*/
-static double read_distance(pros::Distance& sensor) {
-    const double reading = sensor.get() * mm_to_in;
-    if (reading < PoseCorrection::distance_deadzone_lower || reading > PoseCorrection::distance_deadzone_upper) {
-        return -1.0; // invalid reading
-    }
-    return reading;
-}
-
-static double read_left_distance() {
-    return read_distance(left);
-}
-
-static double read_right_distance() {
-    return read_distance(right);
-}
-
-static double read_front_distance() {
-    return read_distance(front);
-}
-
-static double read_back_distance() {
-    return read_distance(back);
-}
+#include "distance_sensors.hpp"
 
 static double angle_diff(double a, double b) {
     double diff = a-b;
@@ -40,6 +13,9 @@ class PoseCorrector {
 // this uses kalman filtering. Kalman filter takes a measurement and fuses it with a prediction (both are noisy) to get better estimate of actual state
 // in this case odometry is the prediction, and distance sensor resets are the measurements
 public: 
+    // distance sensor info
+    DistanceSensors distance_sensors;
+
     // lemlib odometry info
     double Px, Py; // aggregate prediction uncertainty
 
@@ -74,8 +50,9 @@ public:
     lemlib::Pose fuse_pose(); // fuses the new corrected pose with current pose using linear kalman filter
     void update(); // does stuff (yeah very cool i know)
 
-    PoseCorrector() 
-    : Px(0.0), Py(0.0)
+    PoseCorrector(DistanceSensors sensors) 
+    : distance_sensors(sensors)
+    , Px(0.0), Py(0.0)
     , motion_tracking_initialized(false)
     , prediction(lemlib::Pose{0, 0, 0})
     , previous_prediction(lemlib::Pose{0, 0, 0}) {}

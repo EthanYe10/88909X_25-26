@@ -3,6 +3,7 @@
 #include "api.h" // IWYU pragma: keep
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "pros/adi.hpp"
+#include "distance_sensors.hpp"
 
 extern pros::MotorGroup leftMotors;
 extern pros::MotorGroup rightMotors;
@@ -42,3 +43,5 @@ extern pros::Distance left;
 extern pros::Distance right;
 extern pros::Distance front;
 extern pros::Distance back;
+
+extern DistanceSensors distance_sensors;

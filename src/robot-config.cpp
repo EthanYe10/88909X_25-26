@@ -86,3 +86,10 @@ pros::Distance left (Ports::left_distance);
 pros::Distance right(Ports::right_distance);
 pros::Distance back (Ports::back_distance);
 
+DistanceSensors distance_sensors(
+    front, left, right, back, 
+    {Sensors::left_distance_x_offset, Sensors::left_distance_y_offset, Sensors::left_distance_theta},
+    {Sensors::right_distance_x_offset, Sensors::right_distance_y_offset, Sensors::right_distance_theta},
+    {Sensors::front_distance_x_offset, Sensors::front_distance_y_offset, Sensors::front_distance_theta},
+    {Sensors::back_distance_x_offset, Sensors::back_distance_y_offset, Sensors::back_distance_theta}
+);

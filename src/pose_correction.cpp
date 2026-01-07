@@ -15,10 +15,10 @@ bool PoseCorrector::correct_pose() {
     const double s = sin(prediction.theta * degree_to_radian);
     
     EyeInfo eyes[] = {
-        {Sensors::left_distance_x_offset, Sensors::left_distance_y_offset, Sensors::left_distance_theta, read_left_distance()},
-        {Sensors::right_distance_x_offset, Sensors::right_distance_y_offset, Sensors::right_distance_theta, read_right_distance()}, 
-        {Sensors::front_distance_x_offset, Sensors::front_distance_y_offset, Sensors::front_distance_theta, read_front_distance()}, 
-        {Sensors::back_distance_x_offset, Sensors::back_distance_y_offset, Sensors::back_distance_theta, read_back_distance()}
+        {distance_sensors.left_offset.x_offset, distance_sensors.left_offset.y_offset, Sensors::left_distance_theta, distance_sensors.getLeftDistance()},
+        {distance_sensors.right_offset.x_offset, distance_sensors.right_offset.y_offset, Sensors::right_distance_theta, distance_sensors.getRightDistance()}, 
+        {distance_sensors.front_offset.x_offset, distance_sensors.front_offset.y_offset, Sensors::front_distance_theta, distance_sensors.getFrontDistance()}, 
+        {distance_sensors.back_offset.x_offset, distance_sensors.back_offset.y_offset, Sensors::back_distance_theta, distance_sensors.getBackDistance()}
     };
 
     // these are the pose corrections
@@ -214,4 +214,4 @@ void PoseCorrector::update() {
     // gg ez chat is the goat
 }
 
-PoseCorrector poseCorrector;
+PoseCorrector poseCorrector(distance_sensors);
