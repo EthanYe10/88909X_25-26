@@ -9,7 +9,7 @@
 #include "lemlib/chassis/odom.hpp"
 #include "lemlib/chassis/chassis.hpp"
 #include "lemlib/chassis/trackingWheel.hpp"
-#include "pose_correction.hpp"
+#include "pose-correction/pose_correction.hpp"
 
 // tracking thread
 pros::Task* trackingTask = nullptr;
