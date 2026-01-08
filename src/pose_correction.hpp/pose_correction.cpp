@@ -1,7 +1,6 @@
 #include "pose-correction/pose_correction.hpp"
 #include "lemlib/chassis/odom.hpp"
 #include "lemlib/pose.hpp"
-#include "robot-config.hpp"
 #include "constants.hpp"
 #include <cmath>
 
@@ -15,10 +14,10 @@ bool PoseCorrector::correct_pose() {
     const double s = sin(prediction.theta * degree_to_radian);
     
     EyeInfo eyes[] = {
-        {distance_sensors.left_offset.x_offset, distance_sensors.left_offset.y_offset, Sensors::left_distance_theta, distance_sensors.getLeftDistance()},
-        {distance_sensors.right_offset.x_offset, distance_sensors.right_offset.y_offset, Sensors::right_distance_theta, distance_sensors.getRightDistance()}, 
-        {distance_sensors.front_offset.x_offset, distance_sensors.front_offset.y_offset, Sensors::front_distance_theta, distance_sensors.getFrontDistance()}, 
-        {distance_sensors.back_offset.x_offset, distance_sensors.back_offset.y_offset, Sensors::back_distance_theta, distance_sensors.getBackDistance()}
+        {distance_sensors->left_offset.x_offset, distance_sensors->left_offset.y_offset, Sensors::left_distance_theta, distance_sensors->getLeftDistance()},
+        {distance_sensors->right_offset.x_offset, distance_sensors->right_offset.y_offset, Sensors::right_distance_theta, distance_sensors->getRightDistance()}, 
+        {distance_sensors->front_offset.x_offset, distance_sensors->front_offset.y_offset, Sensors::front_distance_theta, distance_sensors->getFrontDistance()}, 
+        {distance_sensors->back_offset.x_offset, distance_sensors->back_offset.y_offset, Sensors::back_distance_theta, distance_sensors->getBackDistance()}
     };
 
     // these are the pose corrections
@@ -122,13 +121,6 @@ void PoseCorrector::calculate_odom_uncertainty() {
     previous_speed = speed_filtered;
     previous_prediction = prediction;
 
-    if (!chassis.isInMotion()) {
-        yaw_rate_filtered = 0.0;
-        speed_filtered = 0.0;
-        acceleration_filtered = 0.0;
-        turning = false;
-        accelerating = false;
-    }
     /* step 2: determine whether robot is turning or accelerating */
     turning = yaw_rate_filtered > PoseCorrection::min_turn_speed_threshold; // deg/s threshold
     accelerating = acceleration_filtered > PoseCorrection::min_accel_threshold; // in/s^2 threshold
@@ -141,14 +133,8 @@ void PoseCorrector::calculate_odom_uncertainty() {
     if (accelerating) {
         Q *= PoseCorrection::QaccelMultiplier;
     }
-
-    if (chassis.isInMotion()) {
-        Px += Q;
-        Py += Q;
-    } else {
-        Px += 0.1 * PoseCorrection::Qbase; // small increase when stopped
-        Py += 0.1 * PoseCorrection::Qbase;
-    }
+    Px += Q;
+    Py += Q;
 }
 
 bool PoseCorrector::corrected_pose_is_valid() const {
@@ -189,6 +175,8 @@ lemlib::Pose PoseCorrector::fuse_pose() {
 }
 
 void PoseCorrector::update() {
+    if (distance_sensors == nullptr) return; // safety check
+
     // first get odom measurement 
     prediction = lemlib::getPose();
     // calculate odom uncertainty
@@ -213,5 +201,3 @@ void PoseCorrector::update() {
     // HOLY CONDITION STACKING
     // gg ez chat is the goat
 }
-
-PoseCorrector poseCorrector(distance_sensors);

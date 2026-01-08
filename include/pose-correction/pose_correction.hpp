@@ -14,7 +14,7 @@ class PoseCorrector {
 // in this case odometry is the prediction, and distance sensor resets are the measurements
 public: 
     // distance sensor info
-    DistanceSensors distance_sensors;
+    DistanceSensors* distance_sensors;
 
     // lemlib odometry info
     double Px, Py; // aggregate prediction uncertainty
@@ -50,7 +50,7 @@ public:
     lemlib::Pose fuse_pose(); // fuses the new corrected pose with current pose using linear kalman filter
     void update(); // does stuff (yeah very cool i know)
 
-    PoseCorrector(DistanceSensors sensors) 
+    PoseCorrector(DistanceSensors* sensors) 
     : distance_sensors(sensors)
     , Px(0.0), Py(0.0)
     , motion_tracking_initialized(false)

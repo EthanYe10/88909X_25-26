@@ -4,6 +4,7 @@
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "pros/adi.hpp"
 #include "pose-correction/distance_sensors.hpp"
+#include "pose-correction/pose_correction.hpp"
 
 extern pros::MotorGroup leftMotors;
 extern pros::MotorGroup rightMotors;
@@ -45,3 +46,5 @@ extern pros::Distance front;
 extern pros::Distance back;
 
 extern DistanceSensors distance_sensors;
+
+extern PoseCorrector poseCorrector;

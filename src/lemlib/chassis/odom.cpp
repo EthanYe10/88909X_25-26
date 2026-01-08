@@ -172,7 +172,6 @@ void lemlib::update() {
     odomPose.y += localX * sin(avgHeading);
     odomPose.theta = heading;
 
-    // comment out this line to avoid disaster (maybe if kalman blows up or my math blows up)
     poseCorrector.update();
 
     // calculate speed

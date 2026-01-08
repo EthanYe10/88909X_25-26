@@ -93,3 +93,8 @@ DistanceSensors distance_sensors(
     {Sensors::front_distance_x_offset, Sensors::front_distance_y_offset, Sensors::front_distance_theta},
     {Sensors::back_distance_x_offset, Sensors::back_distance_y_offset, Sensors::back_distance_theta}
 );
+
+
+// pass in nullptr to disable pose correction, pass in &distance_sensors to enable it
+// HAVE TO INITIALIZE poseCorrector BECAUSE PROGRAM WILL BREAK WITHOUT IT
+PoseCorrector poseCorrector(nullptr);
