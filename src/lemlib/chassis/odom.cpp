@@ -3,7 +3,7 @@
 // Here is a link to the original document
 // http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf
 
-#include <math.h>
+#include <cmath>
 #include "pros/rtos.hpp"
 #include "lemlib/util.hpp"
 #include "lemlib/chassis/odom.hpp"
@@ -20,6 +20,7 @@ lemlib::Drivetrain drive(nullptr, nullptr, 0, 0, 0, 0); // the drivetrain to be 
 lemlib::Pose odomPose(0, 0, 0); // the pose of the robot
 lemlib::Pose odomSpeed(0, 0, 0); // the speed of the robot
 lemlib::Pose odomLocalSpeed(0, 0, 0); // the local speed of the robot
+extern PoseCorrector poseCorrector;
 
 float prevVertical = 0;
 float prevVertical1 = 0;
@@ -171,8 +172,11 @@ void lemlib::update() {
     odomPose.x += localX * -cos(avgHeading);
     odomPose.y += localX * sin(avgHeading);
     odomPose.theta = heading;
-
-    poseCorrector.update();
+    if (poseCorrector.distance_sensors != nullptr)
+    {
+        // correct pose
+        poseCorrector.update();
+    }
 
     // calculate speed
     odomSpeed.x = ema((odomPose.x - prevPose.x) / 0.01, odomSpeed.x, 0.95);

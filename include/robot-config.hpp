@@ -46,5 +46,3 @@ extern pros::Distance front;
 extern pros::Distance back;
 
 extern DistanceSensors distance_sensors;
-
-extern PoseCorrector poseCorrector;

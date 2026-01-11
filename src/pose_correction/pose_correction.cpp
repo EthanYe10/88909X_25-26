@@ -1,7 +1,8 @@
 #include "pose-correction/pose_correction.hpp"
 #include "lemlib/chassis/odom.hpp"
 #include "lemlib/pose.hpp"
-#include "constants.hpp"
+#include "pose-correction/constants.hpp"
+#include "pose-correction/tuning.hpp"
 #include <cmath>
 
 bool PoseCorrector::correct_pose() {
@@ -14,10 +15,10 @@ bool PoseCorrector::correct_pose() {
     const double s = sin(prediction.theta * degree_to_radian);
     
     EyeInfo eyes[] = {
-        {distance_sensors->left_offset.x_offset, distance_sensors->left_offset.y_offset, Sensors::left_distance_theta, distance_sensors->getLeftDistance()},
-        {distance_sensors->right_offset.x_offset, distance_sensors->right_offset.y_offset, Sensors::right_distance_theta, distance_sensors->getRightDistance()}, 
-        {distance_sensors->front_offset.x_offset, distance_sensors->front_offset.y_offset, Sensors::front_distance_theta, distance_sensors->getFrontDistance()}, 
-        {distance_sensors->back_offset.x_offset, distance_sensors->back_offset.y_offset, Sensors::back_distance_theta, distance_sensors->getBackDistance()}
+        {distance_sensors->left_offset.x_offset, distance_sensors->left_offset.y_offset, distance_sensors->left_offset.theta_offset , distance_sensors->getLeftDistance()},
+        {distance_sensors->right_offset.x_offset, distance_sensors->right_offset.y_offset, distance_sensors->right_offset.theta_offset, distance_sensors->getRightDistance()},
+        {distance_sensors->front_offset.x_offset, distance_sensors->front_offset.y_offset, distance_sensors->back_offset.theta_offset, distance_sensors->getFrontDistance()},
+        {distance_sensors->back_offset.x_offset, distance_sensors->back_offset.y_offset, distance_sensors->back_offset.theta_offset, distance_sensors->getBackDistance()}
     };
 
     // these are the pose corrections
@@ -30,24 +31,24 @@ bool PoseCorrector::correct_pose() {
 
     for (auto& eye : eyes) {
         // eye global position
-        double eX = prediction.x + (eye.x_offset * c - eye.y_offset * s);
-        double eY = prediction.y + (eye.x_offset * s + eye.y_offset * c);
+        const double eX = prediction.x + (eye.x_offset * c - eye.y_offset * s);
+        const double eY = prediction.y + (eye.x_offset * s + eye.y_offset * c);
 
         // eye direction vectors
-        double dX = cos((prediction.theta+eye.theta) * degree_to_radian); // "directness" of the eye to x wall
-        double dY = sin((prediction.theta+eye.theta) * degree_to_radian); // "directness" of the eye to y wall
+        const double dX = cos((prediction.theta+eye.theta) * degree_to_radian); // "directness" of the eye to x wall
+        const double dY = sin((prediction.theta+eye.theta) * degree_to_radian); // "directness" of the eye to y wall
 
         // tX and tY are the distances along the direction vectors to the walls, essentially what the distance sensor should read
         // they start at an invalid value, and are only set if the eye is facing the wall
         double tX = -1.0;
         double tY = -1.0;
         // x wall correction
-        double x_confidence = right ? dX : -dX;
+        const double x_confidence = right ? dX : -dX;
         if (x_confidence > 0.2 && fabs(dX) > 1e-2){
             tX = (wallX - eX) / dX;
         }
         // y wall correction
-        double y_confidence = -dY;
+        const double y_confidence = -dY;
         if (y_confidence > 0.2 && fabs(dY) > 1e-2){
             tY = (wallY - eY) / dY;
         }
@@ -62,25 +63,25 @@ bool PoseCorrector::correct_pose() {
         else continue; // didn't hit wall, skip this sensor
         
         // check difference between expected and actual reading
-        double expected_reading = (hit == 'X') ? tX : tY;
+        const double expected_reading = (hit == 'X') ? tX : tY;
         if (fabs(expected_reading - eye.reading) > (PoseCorrection::distance_max_diff_from_expected + 0.05 * expected_reading)) continue; 
 
         // calculate candidate corrected positions
         if (hit == 'X' && eye.reading >= 0.0) {
-            double x_candidate = wallX - eye.reading * dX - (eye.x_offset * c - eye.y_offset * s);
+            const double x_candidate = wallX - eye.reading * dX - (eye.x_offset * c - eye.y_offset * s);
             if (x_confidence > best_x_confidence) {
                 best_x_confidence = x_confidence;
                 best_x_correction = x_candidate;
                 // calculate sensor uncertainty for x
-                double sigma_x = PoseCorrection::distance_r_base + PoseCorrection::distance_r_factor * eye.reading; // 15mm base error + 5% of reading, from VEX official specs
+                const double sigma_x = PoseCorrection::distance_r_base + PoseCorrection::distance_r_factor * eye.reading; // 15mm base error + 5% of reading, from VEX official specs
                 measurement.Rx = sigma_x * sigma_x; // variance
             }
         } else if (hit == 'Y' && eye.reading >= 0.0) {
-            double y_candidate = wallY - eye.reading * dY - (eye.x_offset * s + eye.y_offset * c);
+            const double y_candidate = wallY - eye.reading * dY - (eye.x_offset * s + eye.y_offset * c);
             if (y_confidence > best_y_confidence) {
                 best_y_confidence = y_confidence;
                 best_y_correction = y_candidate;
-                double sigma_y = PoseCorrection::distance_r_base + PoseCorrection::distance_r_factor * eye.reading;
+                const double sigma_y = PoseCorrection::distance_r_base + PoseCorrection::distance_r_factor * eye.reading;
                 measurement.Ry = sigma_y * sigma_y;
             }
         }
@@ -187,11 +188,11 @@ void PoseCorrector::update() {
         // check if corrected pose is valid
         if (corrected_pose_is_valid()) {
             // fuse poses
-            lemlib::Pose fused = fuse_pose();
+            const lemlib::Pose fused = fuse_pose();
 
             // calculate change in pose 
-            double dx = fused.x - prediction.x;
-            double dy = fused.y - prediction.y;
+            const double dx = fused.x - prediction.x;
+            const double dy = fused.y - prediction.y;
             if (fabs(dx) < PoseCorrection::max_pose_correction_per_update || fabs(dy) < PoseCorrection::max_pose_correction_per_update) { // max 1 inch correction to prevent large jumps 
                 lemlib::setPose(fused);
             }

@@ -1,5 +1,7 @@
+#pragma once
+
 #include "lemlib/pose.hpp"
-#include "distance_sensors.hpp"
+#include "pose-correction/distance_sensors.hpp"
 
 static double angle_diff(double a, double b) {
     double diff = a-b;
@@ -46,7 +48,7 @@ public:
     
     bool correct_pose(); // calculate the distance sensor pose
     void calculate_odom_uncertainty(); // calculates Px, Py based on robot motion
-    bool corrected_pose_is_valid() const; // uses mahalanobis distance to check validity (i lwk don't even know what this means)
+    [[nodiscard]] bool corrected_pose_is_valid() const; // uses mahalanobis distance to check validity (i lwk don't even know what this means)
     lemlib::Pose fuse_pose(); // fuses the new corrected pose with current pose using linear kalman filter
     void update(); // does stuff (yeah very cool i know)
 

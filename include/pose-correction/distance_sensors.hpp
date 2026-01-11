@@ -1,7 +1,7 @@
 #pragma once
 
 #include "pros/distance.hpp"
-#include "constants.hpp"
+#include "pose-correction/constants.hpp"
 
 class DistanceSensors {
 public:
